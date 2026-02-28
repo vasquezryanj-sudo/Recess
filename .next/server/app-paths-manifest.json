@@ -1,8 +1,0 @@
-{
-  "/page": "app/page.js",
-  "/new-game/page": "app/new-game/page.js",
-  "/draw/page": "app/draw/page.js",
-  "/results/page": "app/results/page.js",
-  "/gameplay/page": "app/gameplay/page.js",
-  "/records/page": "app/records/page.js"
-}
