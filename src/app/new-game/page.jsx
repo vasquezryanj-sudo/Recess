@@ -2,32 +2,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame, ANIMALS } from '@/lib/GameContext';
+import { getRecords } from '@/lib/storage';
 
 export default function NewGamePage() {
   const router = useRouter();
   const { game, setGame, addPlayer, removePlayer } = useGame();
-  const [showGameSearch, setShowGameSearch] = useState(false);
+  const [showGameInput, setShowGameInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [bggResults, setBggResults] = useState([]);
-  const [bggLoading, setBggLoading] = useState(false);
+  const [previousGames, setPreviousGames] = useState([]);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [selectedAnimal, setSelectedAnimal] = useState(ANIMALS[0]);
   const [bubbles, setBubbles] = useState([]);
-  const searchTimeout = useRef(null);
 
   useEffect(() => {
-    if (!searchQuery || searchQuery.length < 2) { setBggResults([]); return; }
-    setBggLoading(true);
-    clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/bgg-search?q=${encodeURIComponent(searchQuery)}`);
-        const data = await res.json();
-        setBggResults(data.results || []);
-      } catch { setBggResults([]); } finally { setBggLoading(false); }
-    }, 400);
-  }, [searchQuery]);
+    const records = getRecords();
+    const unique = [...new Set(records.map(r => r.title))].slice(0, 8);
+    setPreviousGames(unique);
+  }, []);
 
   useEffect(() => {
     const ids = game.players.map(p => p.id);
@@ -60,12 +52,14 @@ export default function NewGamePage() {
   }, [bubbles]);
 
   const handleBubbleClick = (id) => {
-    setBubbles(prev => prev.map(b => b.id === id ? { ...b, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, bouncing: true } : b));
+    setBubbles(prev => prev.map(b => b.id === id ? {
+      ...b, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, bouncing: true,
+    } : b));
   };
 
-  const handleSelectGame = (g) => {
-    setGame(prev => ({ ...prev, title: g.name, bggGame: g }));
-    setShowGameSearch(false);
+  const handleSelectGame = (title) => {
+    setGame(prev => ({ ...prev, title, bggGame: null }));
+    setShowGameInput(false);
     setSearchQuery('');
   };
 
@@ -78,12 +72,7 @@ export default function NewGamePage() {
   };
 
   const canReady = game.title && game.players.length >= 1;
-
-  const resultsWithCustom = [
-    ...(bggResults.slice(0, 3)),
-    { id: 'custom', name: 'Custom Game', custom: true },
-    ...bggResults.slice(3),
-  ];
+  const filteredPrevious = previousGames.filter(g => g.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="screen" style={{ background: 'var(--cream)', minHeight: '100vh', position: 'relative' }}>
@@ -108,41 +97,56 @@ export default function NewGamePage() {
 
       <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
-          <button onClick={() => setShowGameSearch(!showGameSearch)} className="btn-retro btn-secondary" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={() => setShowGameInput(!showGameInput)} className="btn-retro btn-secondary"
+            style={{ width: '100%', padding: '16px', fontSize: '1.1rem', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{game.title || 'What are we playing?'}</span>
             <span style={{ fontSize: '1.3rem' }}>🎲</span>
           </button>
-          {showGameSearch && (
+
+          {showGameInput && (
             <div className="card-retro" style={{ marginTop: '8px', padding: '12px', background: 'white' }}>
-              <input autoFocus type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search Board Game Geek..."
-                style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--navy)', borderRadius: '6px', fontFamily: 'Nunito, sans-serif', fontSize: '1rem', outline: 'none', background: 'var(--cream)' }} />
-              {bggLoading && <div style={{ textAlign: 'center', padding: '8px', color: 'var(--navy)', opacity: 0.5, fontFamily: 'Fredoka One, cursive' }}>Searching BGG...</div>}
-              {resultsWithCustom.length > 0 && (
-                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {resultsWithCustom.map(g => (
-                    <button key={g.id}
-                      onClick={() => g.custom ? (() => { setGame(prev => ({ ...prev, title: searchQuery || 'Custom Game', bggGame: null })); setShowGameSearch(false); })() : handleSelectGame(g)}
-                      style={{ padding: '10px 12px', background: g.custom ? 'var(--paper)' : 'white', border: g.custom ? '2px dashed var(--navy)' : '2px solid var(--navy)', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontSize: '0.95rem', color: 'var(--navy)', fontWeight: g.custom ? 700 : 400 }}>
-                      {g.custom ? '✏️ Custom: type your own name' : g.name}
-                      {g.year && <span style={{ opacity: 0.5, fontSize: '0.8rem', marginLeft: '6px' }}>({g.year})</span>}
-                    </button>
-                  ))}
+              <input autoFocus type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchQuery.trim() && handleSelectGame(searchQuery.trim())}
+                placeholder="Type game name..."
+                style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--navy)', borderRadius: '6px', fontFamily: 'Nunito, sans-serif', fontSize: '1rem', outline: 'none', background: 'var(--cream)', marginBottom: '8px' }} />
+
+              {searchQuery.trim() && (
+                <button onClick={() => handleSelectGame(searchQuery.trim())}
+                  style={{ width: '100%', padding: '10px 12px', background: 'var(--paper)', border: '2px dashed var(--navy)', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', fontFamily: 'Fredoka One, cursive', fontSize: '0.95rem', color: 'var(--navy)', marginBottom: '8px' }}>
+                  ➕ Add "{searchQuery.trim()}"
+                </button>
+              )}
+
+              {filteredPrevious.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: '0.75rem', color: 'var(--navy)', opacity: 0.5, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>Previously played</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {filteredPrevious.map(g => (
+                      <button key={g} onClick={() => handleSelectGame(g)}
+                        style={{ padding: '10px 12px', background: 'white', border: '2px solid var(--navy)', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontSize: '0.95rem', color: 'var(--navy)' }}>
+                        🎲 {g}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              {searchQuery.length >= 2 && !bggLoading && bggResults.length === 0 && (
-                <div style={{ padding: '8px', opacity: 0.5, fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem' }}>No results — try Custom above</div>
+
+              {filteredPrevious.length === 0 && !searchQuery.trim() && (
+                <div style={{ padding: '8px', opacity: 0.5, fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem' }}>Type a game name above</div>
               )}
             </div>
           )}
         </div>
 
-        <button onClick={() => setShowAddPlayer(!showAddPlayer)} className="btn-retro btn-navy" style={{ width: '100%', padding: '16px', fontSize: '1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button onClick={() => setShowAddPlayer(!showAddPlayer)} className="btn-retro btn-navy"
+          style={{ width: '100%', padding: '16px', fontSize: '1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Add Players</span><span style={{ fontSize: '1.3rem' }}>+</span>
         </button>
 
         {showAddPlayer && (
           <div className="card-retro" style={{ padding: '16px' }}>
-            <input autoFocus type="text" value={playerName} onChange={e => setPlayerName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddPlayer()} placeholder="Player name..."
+            <input autoFocus type="text" value={playerName} onChange={e => setPlayerName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddPlayer()} placeholder="Player name..."
               style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--navy)', borderRadius: '6px', fontFamily: 'Nunito, sans-serif', fontSize: '1rem', outline: 'none', background: 'var(--cream)', marginBottom: '12px' }} />
             <div style={{ marginBottom: '8px', fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', color: 'var(--navy)', letterSpacing: '1px', textTransform: 'uppercase' }}>Choose your animal:</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '16px' }}>
@@ -153,13 +157,15 @@ export default function NewGamePage() {
                 </button>
               ))}
             </div>
-            <button onClick={handleAddPlayer} disabled={!playerName.trim()} className="btn-retro btn-green" style={{ width: '100%', padding: '12px', fontSize: '1rem', opacity: playerName.trim() ? 1 : 0.4 }}>
+            <button onClick={handleAddPlayer} disabled={!playerName.trim()} className="btn-retro btn-green"
+              style={{ width: '100%', padding: '12px', fontSize: '1rem', opacity: playerName.trim() ? 1 : 0.4 }}>
               Add {playerName.trim() ? playerName : 'Player'} {selectedAnimal.emoji}
             </button>
           </div>
         )}
 
-        <button onClick={() => canReady && router.push('/draw')} className="btn-retro btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.3rem', marginTop: '8px', opacity: canReady ? 1 : 0.4, letterSpacing: '1px' }} disabled={!canReady}>
+        <button onClick={() => canReady && router.push('/draw')} className="btn-retro btn-primary"
+          style={{ width: '100%', padding: '18px', fontSize: '1.3rem', marginTop: '8px', opacity: canReady ? 1 : 0.4, letterSpacing: '1px' }} disabled={!canReady}>
           READY ★
         </button>
         {!canReady && (
