@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame, ANIMALS } from '@/lib/GameContext';
-import { getRecords } from '@/lib/storage';
+import { getRecords, getPlayers, savePlayers } from '@/lib/storage';
 import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function NewGamePage() {
@@ -17,12 +17,14 @@ export default function NewGamePage() {
   const [bubbles, setBubbles] = useState([]);
   const [holdingId, setHoldingId] = useState(null);
   const holdTimer = useRef(null);
+  const [savedProfiles, setSavedProfiles] = useState([]);
 
   useEffect(() => {
     getRecords().then(records => {
       const unique = [...new Set((records || []).map(r => r.title))].slice(0, 8);
       setPreviousGames(unique);
     });
+    setSavedProfiles(getPlayers());
   }, []);
 
   useEffect(() => {
@@ -73,12 +75,32 @@ export default function NewGamePage() {
     setSearchQuery('');
   };
 
-  const handleAddPlayer = () => {
-    if (!playerName.trim()) return;
-    addPlayer(playerName.trim(), selectedAnimal);
-    setPlayerName('');
-    setSelectedAnimal(ANIMALS[Math.floor(Math.random() * ANIMALS.length)]);
-    setShowAddPlayer(false);
+  const handleAddPlayer = (name, animal) => {
+    const pName = name || playerName.trim();
+    const pAnimal = animal || selectedAnimal;
+    if (!pName) return;
+    addPlayer(pName, pAnimal);
+    // Auto-save to profiles
+    const profiles = getPlayers();
+    const existing = profiles.findIndex(p => p.name.toLowerCase() === pName.toLowerCase());
+    if (existing >= 0) {
+      profiles[existing] = { name: pName, animal: pAnimal };
+    } else {
+      profiles.push({ name: pName, animal: pAnimal });
+    }
+    savePlayers(profiles);
+    setSavedProfiles(profiles);
+    if (!name) {
+      setPlayerName('');
+      setSelectedAnimal(ANIMALS[Math.floor(Math.random() * ANIMALS.length)]);
+      setShowAddPlayer(false);
+    }
+  };
+
+  const removeProfile = (profileName) => {
+    const profiles = savedProfiles.filter(p => p.name.toLowerCase() !== profileName.toLowerCase());
+    savePlayers(profiles);
+    setSavedProfiles(profiles);
   };
 
   const canReady = game.title && game.players.length >= 1;
@@ -163,6 +185,28 @@ export default function NewGamePage() {
 
         {showAddPlayer && (
           <div className="card-retro" style={{ padding: '16px' }}>
+            {/* Saved player profiles */}
+            {(() => {
+              const currentNames = game.players.map(p => p.name.toLowerCase());
+              const available = savedProfiles.filter(p => !currentNames.includes(p.name.toLowerCase()));
+              if (available.length === 0) return null;
+              return (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: '0.75rem', color: 'var(--navy)', opacity: 0.5, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>Saved Players</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {available.map(p => (
+                      <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: p.animal?.color || 'var(--paper)', borderRadius: '20px', padding: '6px 8px 6px 10px', border: '2px solid var(--navy)', cursor: 'pointer' }}>
+                        <div onClick={() => handleAddPlayer(p.name, p.animal)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <AvatarIcon id={p.animal?.id} size={16} />
+                          <span style={{ fontFamily: 'Fredoka One, cursive', fontSize: '0.8rem', color: 'white' }}>{p.name}</span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); removeProfile(p.name); }} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize: '0.65rem', lineHeight: 1, flexShrink: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <input autoFocus type="text" value={playerName} onChange={e => setPlayerName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddPlayer()} placeholder="Player name..."
               style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--navy)', borderRadius: '6px', fontFamily: 'Nunito, sans-serif', fontSize: '1rem', outline: 'none', background: 'var(--cream)', marginBottom: '12px' }} />
@@ -175,7 +219,7 @@ export default function NewGamePage() {
                 </button>
               ))}
             </div>
-            <button onClick={handleAddPlayer} disabled={!playerName.trim()} className="btn-retro btn-green"
+            <button onClick={() => handleAddPlayer()} disabled={!playerName.trim()} className="btn-retro btn-green"
               style={{ width: '100%', padding: '12px', fontSize: '1rem', opacity: playerName.trim() ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <span>Add {playerName.trim() ? playerName : 'Player'}</span>
               <span style={{ display: 'inline-flex', background: selectedAnimal.color, borderRadius: '50%', width: '24px', height: '24px', alignItems: 'center', justifyContent: 'center' }}><AvatarIcon id={selectedAnimal.id} size={16} /></span>

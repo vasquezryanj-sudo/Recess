@@ -7,7 +7,8 @@ import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function ResultsPage() {
   const router = useRouter();
-  const { game, resetGame } = useGame();
+  const { game, resetGame, resetScores } = useGame();
+  const [shareToast, setShareToast] = useState(false);
   const [phase, setPhase] = useState('bouncing'); // bouncing -> comet -> winner
   const [loserBubbles, setLoserBubbles] = useState([]);
   const [winnerVisible, setWinnerVisible] = useState(false);
@@ -197,10 +198,26 @@ export default function ResultsPage() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => router.push('/records')} className="btn-retro btn-secondary" style={{ padding: '12px 18px', fontSize: '0.9rem' }}>Records 🏆</button>
             <button onClick={() => router.push('/new-game')} className="btn-retro btn-primary" style={{ padding: '12px 18px', fontSize: '0.9rem' }}>Play {game.title || 'Again'} Again</button>
           </div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
+            <button onClick={() => { resetScores(); router.push('/gameplay'); }} className="btn-retro" style={{ padding: '12px 18px', fontSize: '0.9rem', background: 'rgba(245,237,214,0.15)', color: 'var(--cream)', border: '2px solid rgba(212,168,67,0.4)' }}>⚡ Quick Rematch</button>
+            <button onClick={async () => {
+              const medals = ['🥇', '🥈', '🥉'];
+              const lines = sortedPlayers.map((p, i) => `${medals[i] || `#${i+1}`} ${p.name} - ${game.scores[p.id] || 0}`);
+              const text = `🎲 ${game.title} results:\n${lines.join('\n')}\nPlayed on Recess`;
+              if (navigator.share) {
+                try { await navigator.share({ text }); } catch {}
+              } else {
+                try { await navigator.clipboard.writeText(text); setShareToast(true); setTimeout(() => setShareToast(false), 2000); } catch {}
+              }
+            }} className="btn-retro" style={{ padding: '12px 18px', fontSize: '0.9rem', background: 'rgba(245,237,214,0.15)', color: 'var(--cream)', border: '2px solid rgba(212,168,67,0.4)' }}>📤 Share Results</button>
+          </div>
+          {shareToast && (
+            <div style={{ marginTop: '10px', fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '0.85rem', textAlign: 'center', animation: 'fadeIn 0.3s' }}>Copied!</div>
+          )}
           <button onClick={() => { resetGame(); router.push('/'); }} style={{ marginTop: '14px', background: 'none', border: 'none', color: 'var(--cream)', opacity: 0.35, fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', cursor: 'pointer', display: 'block', margin: '14px auto 0' }}>Home</button>
         </div>
       )}

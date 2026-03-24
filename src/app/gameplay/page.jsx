@@ -16,6 +16,11 @@ export default function GameplayPage() {
   const longPressIntervals = useRef({});
   const reorderTimeout = useRef(null);
 
+  // Live score preview state
+  const [pendingDeltas, setPendingDeltas] = useState({});
+  const pendingDeltasRef = useRef({});
+  const debounceTimers = useRef({});
+
   // Timer state
   const [showTimer, setShowTimer] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState(5);
@@ -49,20 +54,22 @@ export default function GameplayPage() {
     return pos;
   }, [orderedPlayers]);
 
-  // Delayed reorder with FLIP animation
+  // Delayed reorder with FLIP animation — suppressed during pending previews
   useEffect(() => {
+    if (Object.keys(pendingDeltas).length > 0) return;
     clearTimeout(reorderTimeout.current);
     reorderTimeout.current = setTimeout(() => {
       const sorted = [...game.players].sort((a, b) => (game.scores[b.id] || 0) - (game.scores[a.id] || 0));
       const hasChanged = sorted.some((p, i) => p.id !== orderedPlayers[i]?.id);
       if (hasChanged) {
+        try { navigator.vibrate([30, 10, 30]); } catch {}
         const oldPos = capturePositions();
         setPositions(oldPos);
         setOrderedPlayers(sorted);
       }
     }, 2000);
     return () => clearTimeout(reorderTimeout.current);
-  }, [game.scores]);
+  }, [game.scores, pendingDeltas]);
 
   // FLIP: after reorder, animate from old position to new
   useEffect(() => {
@@ -115,8 +122,25 @@ export default function GameplayPage() {
     setTimeout(() => setScoreFlash(prev => { const n = {...prev}; delete n[playerId]; return n; }), 500);
   };
 
+  const commitDelta = (playerId) => {
+    const delta = pendingDeltasRef.current[playerId];
+    if (delta && delta !== 0) {
+      updateScore(playerId, delta);
+    }
+    delete pendingDeltasRef.current[playerId];
+    setPendingDeltas({ ...pendingDeltasRef.current });
+  };
+
+  const addDelta = (playerId, amount) => {
+    pendingDeltasRef.current[playerId] = (pendingDeltasRef.current[playerId] || 0) + amount;
+    setPendingDeltas({ ...pendingDeltasRef.current });
+    clearTimeout(debounceTimers.current[playerId]);
+    debounceTimers.current[playerId] = setTimeout(() => commitDelta(playerId), 1500);
+    try { navigator.vibrate(10); } catch {}
+  };
+
   const handleQuickPress = (playerId, sign) => {
-    updateScore(playerId, sign);
+    addDelta(playerId, sign);
     flashScore(playerId, sign > 0 ? 'up' : 'down');
   };
 
@@ -128,7 +152,7 @@ export default function GameplayPage() {
         count++;
         if (count > 10) speed = 5;
         if (count > 25) speed = 10;
-        updateScore(playerId, sign * speed);
+        addDelta(playerId, sign * speed);
         flashScore(playerId, sign > 0 ? 'up' : 'down');
       }, 100);
     }, 400);
@@ -139,12 +163,22 @@ export default function GameplayPage() {
     clearInterval(longPressIntervals.current[playerId]);
   };
 
+  const handleScoreClick = (playerId) => {
+    // Commit any pending delta before opening modal
+    if (pendingDeltasRef.current[playerId]) {
+      clearTimeout(debounceTimers.current[playerId]);
+      commitDelta(playerId);
+    }
+    setShowInput({ playerId, sign: 1 });
+  };
+
   const handleInputSubmit = () => {
     if (!showInput || !inputVal) return;
     const n = parseFloat(inputVal);
     if (isNaN(n)) return;
     updateScore(showInput.playerId, showInput.sign * Math.abs(n));
     flashScore(showInput.playerId, showInput.sign > 0 ? 'up' : 'down');
+    try { navigator.vibrate(10); } catch {}
     setShowInput(null);
     setInputVal('');
   };
@@ -301,19 +335,22 @@ export default function GameplayPage() {
                   onClick={() => handleQuickPress(player.id, -1)}
                   style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--red)', border: '2px solid var(--navy)', color: 'white', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', userSelect: 'none', lineHeight: 1, flexShrink: 0 }}>−</button>
 
-                <div onClick={() => setShowInput({ playerId: player.id, sign: 1 })} style={{
-                  width: '64px',
+                <div onClick={() => handleScoreClick(player.id)} style={{
+                  minWidth: '64px',
                   textAlign: 'center',
                   fontFamily: 'Abril Fatface, serif',
-                  fontSize: '1.7rem',
+                  fontSize: pendingDeltas[player.id] ? '1.2rem' : '1.7rem',
                   color: score < 0 ? 'var(--red)' : 'var(--navy)',
                   background: flash === 'up' ? 'rgba(45,106,79,0.25)' : flash === 'down' ? 'rgba(200,48,58,0.25)' : 'transparent',
                   borderRadius: '8px',
-                  transition: 'background 0.4s',
+                  transition: 'background 0.4s, font-size 0.2s',
                   cursor: 'pointer',
-                  padding: '2px 0',
+                  padding: '2px 4px',
+                  whiteSpace: 'nowrap',
                 }}>
-                  {score}
+                  {pendingDeltas[player.id] ? (
+                    <>{score}<span style={{ fontSize: '0.85rem', color: pendingDeltas[player.id] > 0 ? 'var(--green)' : 'var(--red)', fontFamily: 'Fredoka One, cursive' }}>{` ${pendingDeltas[player.id] > 0 ? '+' : '−'} ${Math.abs(pendingDeltas[player.id])}`}</span></>
+                  ) : score}
                 </div>
 
                 <button

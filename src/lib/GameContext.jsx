@@ -1,5 +1,6 @@
 'use client';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { flushSaveQueue } from '@/lib/storage';
 
 const GameContext = createContext(null);
 
@@ -82,8 +83,17 @@ export function GameProvider({ children }) {
     title: '', bggGame: null, players: [], scores: {}, firstPlayer: null, startedAt: null,
   });
 
+  const resetScores = () => setGame(g => ({
+    ...g,
+    scores: Object.fromEntries(g.players.map(p => [p.id, 0])),
+  }));
+
+  useEffect(() => {
+    flushSaveQueue();
+  }, []);
+
   return (
-    <GameContext.Provider value={{ game, setGame, addPlayer, removePlayer, updateScore, setFirstPlayer, resetGame }}>
+    <GameContext.Provider value={{ game, setGame, addPlayer, removePlayer, updateScore, setFirstPlayer, resetGame, resetScores }}>
       {children}
     </GameContext.Provider>
   );

@@ -2,6 +2,8 @@
 // Falls back to localStorage if API is unavailable
 
 const LOCAL_KEY = 'recess_games_cache';
+const QUEUE_KEY = 'recess_save_queue';
+const PLAYERS_KEY = 'recess_players';
 
 function getCache() {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
@@ -35,6 +37,12 @@ export async function saveGame({ title, players, scores }) {
       scores,
     };
     setCache([record, ...cache]);
+    // Queue for retry when back online
+    try {
+      const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      queue.push({ title, players: sorted.map(p => ({ name: p.name, animal_id: p.animal?.id || p.animal_id, score: scores[p.id] || 0 })), scores });
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    } catch {}
     return record;
   }
 }
@@ -54,4 +62,33 @@ export async function getRecords() {
 
 export function getRecordsSync() {
   return getCache();
+}
+
+export async function flushSaveQueue() {
+  try {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+    if (queue.length === 0) return;
+    const remaining = [];
+    for (const item of queue) {
+      try {
+        const res = await fetch('/api/games', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+        });
+        if (!res.ok) throw new Error('API error');
+      } catch {
+        remaining.push(item);
+      }
+    }
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+  } catch {}
+}
+
+export function savePlayers(players) {
+  try { localStorage.setItem(PLAYERS_KEY, JSON.stringify(players)); } catch {}
+}
+
+export function getPlayers() {
+  try { return JSON.parse(localStorage.getItem(PLAYERS_KEY) || '[]'); } catch { return []; }
 }

@@ -120,6 +120,48 @@ useEffect(() => {
       {records.length > 0 && !selectedGame && !selectedPlayer && (
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
+          {/* All-Time Standings */}
+          {(() => {
+            const playerStats = {};
+            records.forEach(r => {
+              (r.players || []).forEach((p, i) => {
+                if (!playerStats[p.name]) playerStats[p.name] = { name: p.name, wins: 0, games: 0, totalScore: 0 };
+                playerStats[p.name].games++;
+                playerStats[p.name].totalScore += (p.score || 0);
+                if (i === 0) playerStats[p.name].wins++;
+              });
+            });
+            const standings = Object.values(playerStats)
+              .filter(p => p.games >= 2)
+              .sort((a, b) => (b.wins / b.games) - (a.wins / a.games));
+            if (standings.length === 0) return null;
+            return (
+              <div className="card-retro" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--red)', padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span>👑</span>
+                  <span style={{ fontFamily: 'Fredoka One, cursive', color: 'white', fontSize: '0.9rem', letterSpacing: '1px', textTransform: 'uppercase' }}>All-Time Standings</span>
+                </div>
+                <div style={{ padding: '4px 0' }}>
+                  {standings.map((p, i) => (
+                    <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: i === 0 ? 'rgba(212,168,67,0.1)' : 'transparent' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontFamily: 'Abril Fatface, serif', fontSize: '1rem', color: 'var(--navy)', opacity: i < 3 ? 1 : 0.4, width: '24px', textAlign: 'center' }}>{MEDAL[i] || `#${i+1}`}</span>
+                        <div>
+                          <span style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--navy)', fontSize: '0.95rem' }}>{p.name}</span>
+                          <div style={{ fontFamily: 'Nunito, sans-serif', color: 'var(--navy)', opacity: 0.4, fontSize: '0.7rem' }}>{p.games} games · avg {(p.totalScore / p.games).toFixed(1)}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontFamily: 'Abril Fatface, serif', color: i === 0 ? 'var(--red)' : 'var(--navy)', fontSize: '1.2rem' }}>{Math.round((p.wins / p.games) * 100)}%</span>
+                        <div style={{ fontFamily: 'Nunito, sans-serif', color: 'var(--navy)', opacity: 0.4, fontSize: '0.65rem' }}>{p.wins}W / {p.games}G</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Search by Game */}
           <div className="card-retro" style={{ padding: '0', overflow: 'hidden' }}>
             <button onClick={() => setView(view === 'game' ? 'all' : 'game')}
