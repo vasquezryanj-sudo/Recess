@@ -13,8 +13,8 @@ export default function RecordsPage() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [expanded, setExpanded] = useState(null);
 
-  useEffect(() => {
-    setRecords(getRecords());
+useEffect(() => {
+    getRecords().then(data => setRecords(data || []));
   }, []);
 
   const formatDate = (iso) => new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
