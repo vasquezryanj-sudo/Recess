@@ -15,10 +15,11 @@ export default function NewGamePage() {
   const [selectedAnimal, setSelectedAnimal] = useState(ANIMALS[0]);
   const [bubbles, setBubbles] = useState([]);
 
-  useEffect(() => {
-    const records = getRecords();
-    const unique = [...new Set(records.map(r => r.title))].slice(0, 8);
-    setPreviousGames(unique);
+useEffect(() => {
+    getRecords().then(records => {
+      const unique = [...new Set((records || []).map(r => r.title))].slice(0, 8);
+      setPreviousGames(unique);
+    });
   }, []);
 
   useEffect(() => {
