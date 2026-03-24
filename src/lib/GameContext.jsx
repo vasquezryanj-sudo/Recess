@@ -19,18 +19,26 @@ export const ANIMALS = [
 ];
 
 export const ROTATING_PHRASES = [
-  'world peace',
-  'free ice cream for life',
-  'unlimited vacation days',
-  'a personal chef',
-  'winning the lottery',
-  'a dog that does the dishes',
-  'a Netflix show about you',
-  'free Wi-Fi everywhere',
-  'an extra hour of sleep',
   'finding $20 in your pocket',
-  'a perfect hair day every day',
-  'knowing all the answers on Jeopardy',
+  'a dog doing the dishes',
+  'your therapist finally getting it',
+  'taxes doing themselves',
+  'a burrito that never ends',
+  'your ex moving to another continent',
+  'a shower with perfect water pressure forever',
+  'winning an argument with your mother',
+  'a hangover that makes you stronger',
+  'birds deciding to shut up at 6am',
+  'a dentist who says everything looks great',
+  'pooping at exactly the right moment',
+  'your boss accidentally replying all with their resignation',
+  'a fart that smells like fresh bread',
+  'dying peacefully in your sleep at 140',
+  'finding out gluten was a hoax',
+  'a mattress that gets better every year',
+  'accidentally inventing a religion',
+  'a parking spot that follows you around',
+  'your enemies getting mildly inconvenienced forever',
 ];
 
 export function GameProvider({ children }) {
