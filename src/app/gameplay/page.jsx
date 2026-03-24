@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/lib/GameContext';
 
@@ -11,32 +11,103 @@ export default function GameplayPage() {
   const [inputVal, setInputVal] = useState('');
   const [showGameOver, setShowGameOver] = useState(false);
   const [scoreFlash, setScoreFlash] = useState({});
-  const [reordering, setReordering] = useState(false);
   const longPressTimers = useRef({});
   const longPressIntervals = useRef({});
   const reorderTimeout = useRef(null);
+
+  // Timer state
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerMinutes, setTimerMinutes] = useState(5);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerSetMin, setTimerSetMin] = useState(5);
+  const [timerSetSec, setTimerSetSec] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerUp, setTimerUp] = useState(false);
+  const timerInterval = useRef(null);
+
+  // Round counter state
+  const [showRoundCounter, setShowRoundCounter] = useState(false);
+  const [round, setRound] = useState(1);
+
+  // Position tracking for smooth slide
+  const [positions, setPositions] = useState({});
+  const cardRefs = useRef({});
 
   useEffect(() => {
     if (game.players.length === 0) { router.push('/'); return; }
     setOrderedPlayers([...game.players]);
   }, []);
 
-  // Delayed reorder — 2 second lag, with flash warning before
+  // Capture positions before reorder
+  const capturePositions = useCallback(() => {
+    const pos = {};
+    orderedPlayers.forEach(p => {
+      const el = cardRefs.current[p.id];
+      if (el) pos[p.id] = el.getBoundingClientRect().top;
+    });
+    return pos;
+  }, [orderedPlayers]);
+
+  // Delayed reorder with FLIP animation
   useEffect(() => {
     clearTimeout(reorderTimeout.current);
     reorderTimeout.current = setTimeout(() => {
       const sorted = [...game.players].sort((a, b) => (game.scores[b.id] || 0) - (game.scores[a.id] || 0));
       const hasChanged = sorted.some((p, i) => p.id !== orderedPlayers[i]?.id);
       if (hasChanged) {
-        setReordering(true);
-        setTimeout(() => {
-          setOrderedPlayers(sorted);
-          setTimeout(() => setReordering(false), 600);
-        }, 300);
+        const oldPos = capturePositions();
+        setPositions(oldPos);
+        setOrderedPlayers(sorted);
       }
     }, 2000);
     return () => clearTimeout(reorderTimeout.current);
   }, [game.scores]);
+
+  // FLIP: after reorder, animate from old position to new
+  useEffect(() => {
+    if (Object.keys(positions).length === 0) return;
+    requestAnimationFrame(() => {
+      orderedPlayers.forEach(p => {
+        const el = cardRefs.current[p.id];
+        if (!el || positions[p.id] === undefined) return;
+        const newTop = el.getBoundingClientRect().top;
+        const delta = positions[p.id] - newTop;
+        if (delta !== 0) {
+          el.style.transition = 'none';
+          el.style.transform = `translateY(${delta}px)`;
+          requestAnimationFrame(() => {
+            el.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            el.style.transform = 'translateY(0)';
+          });
+        }
+      });
+      setPositions({});
+    });
+  }, [orderedPlayers]);
+
+  // Timer logic
+  useEffect(() => {
+    if (!timerRunning) return;
+    timerInterval.current = setInterval(() => {
+      setTimerMinutes(m => {
+        setTimerSeconds(s => {
+          if (m === 0 && s === 0) {
+            clearInterval(timerInterval.current);
+            setTimerRunning(false);
+            setTimerUp(true);
+            return 0;
+          }
+          if (s === 0) {
+            setTimerMinutes(m - 1);
+            return 59;
+          }
+          return s - 1;
+        });
+        return m;
+      });
+    }, 1000);
+    return () => clearInterval(timerInterval.current);
+  }, [timerRunning]);
 
   const flashScore = (playerId, direction) => {
     setScoreFlash(prev => ({ ...prev, [playerId]: direction }));
@@ -77,26 +148,88 @@ export default function GameplayPage() {
     setInputVal('');
   };
 
+  const handleStartTimer = () => {
+    if (timerMinutes === 0 && timerSeconds === 0) return;
+    setTimerSetMin(timerMinutes);
+    setTimerSetSec(timerSeconds);
+    setTimerUp(false);
+    setTimerRunning(true);
+  };
+
+  const handleStopTimer = () => {
+    setTimerRunning(false);
+    clearInterval(timerInterval.current);
+  };
+
+  const handleClearTimer = () => {
+    setTimerRunning(false);
+    setTimerUp(false);
+    clearInterval(timerInterval.current);
+    setTimerMinutes(timerSetMin);
+    setTimerSeconds(timerSetSec);
+  };
+
+  const isFirstPlayer = (playerId) => game.firstPlayer && game.firstPlayer.id === playerId;
+
   return (
     <div className="screen" style={{ background: 'var(--cream)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'var(--navy)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--cream)', fontSize: '1.3rem' }}>{game.title || 'Game'}</div>
-          {game.firstPlayer && (
-            <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '0.75rem', letterSpacing: '1px' }}>
-              {game.firstPlayer.animal.emoji} {game.firstPlayer.name} went first
-            </div>
-          )}
         </div>
-        <button onClick={() => setShowGameOver(true)} style={{ background: 'var(--red)', color: 'white', border: '2px solid rgba(255,255,255,0.3)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.7rem', fontFamily: 'Fredoka One, cursive', cursor: 'pointer', opacity: 0.7 }}>
-          END
-        </button>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button onClick={() => setShowRoundCounter(!showRoundCounter)} style={{ background: 'rgba(255,255,255,0.12)', color: 'var(--cream)', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '5px 8px', fontSize: '0.65rem', fontFamily: 'Fredoka One, cursive', cursor: 'pointer', letterSpacing: '0.5px' }}>
+            R{round}
+          </button>
+          <button onClick={() => setShowTimer(!showTimer)} style={{ background: 'rgba(255,255,255,0.12)', color: timerUp ? 'var(--red)' : 'var(--cream)', border: `2px solid ${timerUp ? 'var(--red)' : 'rgba(255,255,255,0.2)'}`, borderRadius: '6px', padding: '5px 8px', fontSize: '0.65rem', fontFamily: 'Fredoka One, cursive', cursor: 'pointer', letterSpacing: '0.5px', animation: timerUp ? 'timerFlash 0.5s ease-in-out infinite' : 'none' }}>
+            ⏱
+          </button>
+          <button onClick={() => setShowGameOver(true)} style={{ background: 'var(--red)', color: 'white', border: '2px solid rgba(255,255,255,0.3)', borderRadius: '6px', padding: '5px 10px', fontSize: '0.7rem', fontFamily: 'Fredoka One, cursive', cursor: 'pointer', opacity: 0.7 }}>
+            END
+          </button>
+        </div>
       </div>
 
-      {/* Reorder warning banner */}
-      {reordering && (
-        <div style={{ background: 'var(--gold)', padding: '8px', textAlign: 'center', fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', color: 'var(--navy)', borderBottom: '2px solid var(--navy)', animation: 'slideDown 0.3s ease' }}>
-          ⚡ Rankings are updating!
+      {/* Round counter */}
+      {showRoundCounter && (
+        <div style={{ background: 'var(--paper)', borderBottom: '3px solid var(--navy)', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+          <button onClick={() => setRound(r => Math.max(1, r - 1))} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--cream)', border: 'none', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', border: '4px solid var(--navy)', background: 'var(--cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+            <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '1.5rem', color: 'var(--navy)', lineHeight: 1 }}>{round}</div>
+            <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: '0.45rem', color: 'var(--navy)', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px' }}>Round</div>
+          </div>
+          <button onClick={() => setRound(r => r + 1)} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--cream)', border: 'none', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>→</button>
+        </div>
+      )}
+
+      {/* Timer display */}
+      {showTimer && (
+        <div style={{ background: timerUp ? 'var(--red)' : 'var(--navy)', borderBottom: '3px solid var(--navy)', padding: '14px 20px', textAlign: 'center', transition: 'background 0.3s' }}>
+          {timerUp ? (
+            <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '1.6rem', color: 'white', animation: 'timerFlash 0.5s ease-in-out infinite' }}>TIME'S UP!</div>
+          ) : (
+            <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '2.2rem', color: 'var(--gold)', letterSpacing: '2px' }}>
+              {String(timerMinutes).padStart(2, '0')}:{String(timerSeconds).padStart(2, '0')}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '10px', alignItems: 'center' }}>
+            {!timerRunning && !timerUp && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginRight: '8px' }}>
+                <input type="number" min="0" max="99" value={timerMinutes} onChange={e => setTimerMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={{ width: '42px', padding: '6px 4px', border: '2px solid var(--gold)', borderRadius: '6px', fontFamily: 'Abril Fatface, serif', fontSize: '1rem', textAlign: 'center', background: 'rgba(255,255,255,0.1)', color: 'var(--cream)', outline: 'none' }} />
+                <span style={{ color: 'var(--cream)', fontFamily: 'Fredoka One, cursive', fontSize: '0.7rem' }}>m</span>
+                <input type="number" min="0" max="59" value={timerSeconds} onChange={e => setTimerSeconds(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                  style={{ width: '42px', padding: '6px 4px', border: '2px solid var(--gold)', borderRadius: '6px', fontFamily: 'Abril Fatface, serif', fontSize: '1rem', textAlign: 'center', background: 'rgba(255,255,255,0.1)', color: 'var(--cream)', outline: 'none' }} />
+                <span style={{ color: 'var(--cream)', fontFamily: 'Fredoka One, cursive', fontSize: '0.7rem' }}>s</span>
+              </div>
+            )}
+            {!timerRunning ? (
+              <button onClick={handleStartTimer} style={{ background: 'var(--green)', color: 'white', border: '2px solid rgba(255,255,255,0.3)', borderRadius: '6px', padding: '6px 14px', fontFamily: 'Fredoka One, cursive', fontSize: '0.8rem', cursor: 'pointer' }}>Start</button>
+            ) : (
+              <button onClick={handleStopTimer} style={{ background: 'var(--red)', color: 'white', border: '2px solid rgba(255,255,255,0.3)', borderRadius: '6px', padding: '6px 14px', fontFamily: 'Fredoka One, cursive', fontSize: '0.8rem', cursor: 'pointer' }}>Stop</button>
+            )}
+            <button onClick={handleClearTimer} style={{ background: 'rgba(255,255,255,0.15)', color: 'var(--cream)', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px 14px', fontFamily: 'Fredoka One, cursive', fontSize: '0.8rem', cursor: 'pointer' }}>Clear</button>
+          </div>
         </div>
       )}
 
@@ -105,16 +238,15 @@ export default function GameplayPage() {
           const score = game.scores[player.id] || 0;
           const flash = scoreFlash[player.id];
           const isLeading = index === 0;
+          const isFirst = isFirstPlayer(player.id);
 
           return (
-            <div key={player.id} className="card-retro" style={{
+            <div key={player.id} ref={el => cardRefs.current[player.id] = el} className="card-retro" style={{
               padding: '14px 16px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
               background: isLeading ? 'var(--gold)' : 'var(--paper)',
-              transform: reordering ? 'scale(0.98)' : 'scale(1)',
-              transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
               boxShadow: isLeading ? '5px 5px 0px var(--navy), 0 0 0 2px var(--red)' : '5px 5px 0px var(--navy)',
             }}>
               {/* Rank badge */}
@@ -125,31 +257,40 @@ export default function GameplayPage() {
                 opacity: isLeading ? 1 : 0.35,
                 width: '28px',
                 textAlign: 'center',
-                transition: 'all 0.4s',
               }}>
                 {isLeading ? '★' : index + 1}
               </div>
 
-              {/* Avatar */}
-              <div style={{
-                width: isLeading ? '52px' : '44px',
-                height: isLeading ? '52px' : '44px',
-                borderRadius: '50%',
-                background: player.animal.color,
-                border: `${isLeading ? '4px' : '3px'} solid var(--navy)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: isLeading ? '1.6rem' : '1.4rem',
-                flexShrink: 0,
-                transition: 'all 0.4s',
-              }}>
-                {player.animal.emoji}
+              {/* Avatar with first-player badge */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div style={{
+                  width: isLeading ? '52px' : '44px',
+                  height: isLeading ? '52px' : '44px',
+                  borderRadius: '50%',
+                  background: player.animal.color,
+                  border: `${isLeading ? '4px' : '3px'} solid var(--navy)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: isLeading ? '1.6rem' : '1.4rem',
+                }}>
+                  {player.animal.emoji}
+                </div>
+                {isFirst && (
+                  <div style={{
+                    position: 'absolute', top: '-8px', right: '-8px',
+                    background: 'var(--gold)', border: '2px solid var(--navy)', borderRadius: '50%',
+                    width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.6rem', fontFamily: 'Fredoka One, cursive', color: 'var(--navy)', lineHeight: 1,
+                  }}>
+                    1st
+                  </div>
+                )}
               </div>
 
               {/* Name */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: isLeading ? '1.2rem' : '1rem', color: 'var(--navy)', transition: 'all 0.4s' }}>{player.name}</div>
+                <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: isLeading ? '1.2rem' : '1rem', color: 'var(--navy)' }}>{player.name}</div>
               </div>
 
               {/* Score + controls */}
@@ -225,6 +366,10 @@ export default function GameplayPage() {
         @keyframes slideDown {
           from { transform: translateY(-100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes timerFlash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
       `}</style>
     </div>

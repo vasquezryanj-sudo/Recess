@@ -14,6 +14,8 @@ export default function NewGamePage() {
   const [playerName, setPlayerName] = useState('');
   const [selectedAnimal, setSelectedAnimal] = useState(ANIMALS[0]);
   const [bubbles, setBubbles] = useState([]);
+  const [holdingId, setHoldingId] = useState(null);
+  const holdTimer = useRef(null);
 
 useEffect(() => {
     getRecords().then(records => {
@@ -29,7 +31,7 @@ useEffect(() => {
       const newPlayers = game.players.filter(p => !prev.find(b => b.id === p.id));
       const newBubbles = newPlayers.map(p => ({
         ...p, x: Math.random() * 70 + 10, y: Math.random() * 60 + 10,
-        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4, bouncing: false,
+        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
       }));
       return [...existing, ...newBubbles];
     });
@@ -39,23 +41,29 @@ useEffect(() => {
     if (bubbles.length === 0) return;
     const frame = requestAnimationFrame(() => {
       setBubbles(prev => prev.map(b => {
-        let { x, y, vx, vy, bouncing } = b;
-        if (bouncing) { vx *= 0.92; vy *= 0.92; if (Math.abs(vx) < 0.05 && Math.abs(vy) < 0.05) bouncing = false; }
+        let { x, y, vx, vy } = b;
         x += vx; y += vy;
         if (x < 5) { x = 5; vx = Math.abs(vx); }
         if (x > 85) { x = 85; vx = -Math.abs(vx); }
         if (y < 5) { y = 5; vy = Math.abs(vy); }
         if (y > 85) { y = 85; vy = -Math.abs(vy); }
-        return { ...b, x, y, vx, vy, bouncing };
+        return { ...b, x, y, vx, vy };
       }));
     });
     return () => cancelAnimationFrame(frame);
   }, [bubbles]);
 
-  const handleBubbleClick = (id) => {
-    setBubbles(prev => prev.map(b => b.id === id ? {
-      ...b, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3, bouncing: true,
-    } : b));
+  const startHold = (id) => {
+    setHoldingId(id);
+    holdTimer.current = setTimeout(() => {
+      removePlayer(id);
+      setHoldingId(null);
+    }, 500);
+  };
+
+  const endHold = () => {
+    clearTimeout(holdTimer.current);
+    setHoldingId(null);
   };
 
   const handleSelectGame = (title) => {
@@ -86,13 +94,21 @@ useEffect(() => {
         <div style={{ position: 'relative', height: '200px', overflow: 'hidden', background: 'var(--paper)', borderBottom: '3px solid var(--navy)' }}>
           <div style={{ position: 'absolute', inset: 0, opacity: 0.05, backgroundImage: 'radial-gradient(circle, var(--navy) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
           {bubbles.map(b => (
-            <button key={b.id} onClick={() => handleBubbleClick(b.id)} onDoubleClick={() => removePlayer(b.id)}
-              style={{ position: 'absolute', left: `${b.x}%`, top: `${b.y}%`, transform: 'translate(-50%, -50%)', width: '64px', height: '64px', borderRadius: '50%', background: b.animal.color, border: '3px solid var(--navy)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', cursor: 'pointer', boxShadow: '2px 2px 0px var(--navy)', padding: 0, userSelect: 'none' }}>
+            <div key={b.id}
+              onMouseDown={() => startHold(b.id)} onMouseUp={endHold} onMouseLeave={endHold}
+              onTouchStart={() => startHold(b.id)} onTouchEnd={endHold}
+              style={{
+                position: 'absolute', left: `${b.x}%`, top: `${b.y}%`, transform: `translate(-50%, -50%) scale(${holdingId === b.id ? 0.8 : 1})`,
+                width: '64px', height: '64px', borderRadius: '50%', background: b.animal.color,
+                border: `3px solid ${holdingId === b.id ? 'var(--red)' : 'var(--navy)'}`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.6rem', cursor: 'pointer', boxShadow: '2px 2px 0px var(--navy)', padding: 0,
+                userSelect: 'none', transition: 'transform 0.2s, border-color 0.2s',
+              }}>
               {b.animal.emoji}
               <span style={{ fontSize: '0.5rem', color: 'white', fontFamily: 'Fredoka One, cursive', lineHeight: 1, maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-            </button>
+            </div>
           ))}
-          <div style={{ position: 'absolute', bottom: '6px', right: '10px', fontSize: '0.6rem', color: 'var(--navy)', opacity: 0.4, fontFamily: 'Nunito, sans-serif' }}>tap to bounce · double tap to remove</div>
         </div>
       )}
 

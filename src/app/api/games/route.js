@@ -37,3 +37,17 @@ export async function POST(req) {
     return Response.json({ error: 'Failed to save game' }, { status: 500 });
   }
 }
+
+export async function DELETE(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return Response.json({ error: 'Missing id' }, { status: 400 });
+
+    await sql`DELETE FROM games WHERE id = ${id}`;
+    return Response.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    return Response.json({ error: 'Failed to delete game' }, { status: 500 });
+  }
+}

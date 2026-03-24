@@ -12,12 +12,29 @@ export default function RecordsPage() {
   const [selectedGame, setSelectedGame] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
 useEffect(() => {
     getRecords().then(data => setRecords(data || []));
   }, []);
 
   const formatDate = (iso) => new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`/api/games?id=${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error('API delete failed', e);
+    }
+    setRecords(prev => prev.filter(r => r.id !== id));
+    // Also update localStorage cache
+    try {
+      const cached = JSON.parse(localStorage.getItem('recess_games_cache') || '[]');
+      localStorage.setItem('recess_games_cache', JSON.stringify(cached.filter(r => r.id !== id)));
+    } catch {}
+    setConfirmDelete(null);
+    setExpanded(null);
+  };
 
   // All unique game titles
   const allGames = [...new Set(records.map(r => r.title))];
@@ -64,6 +81,18 @@ useEffect(() => {
   const { avgScores, winRates } = gameLeaderboard();
 
   const MEDAL = ['🥇', '🥈', '🥉'];
+
+  const DeleteButton = ({ recordId }) => (
+    confirmDelete === recordId ? (
+      <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
+        <span style={{ fontFamily: 'Fredoka One, cursive', fontSize: '0.75rem', color: 'var(--red)' }}>Delete this game?</span>
+        <button onClick={() => handleDelete(recordId)} style={{ background: 'var(--red)', color: 'white', border: '2px solid var(--navy)', borderRadius: '6px', padding: '4px 10px', fontFamily: 'Fredoka One, cursive', fontSize: '0.7rem', cursor: 'pointer' }}>Yes</button>
+        <button onClick={() => setConfirmDelete(null)} style={{ background: 'var(--paper)', color: 'var(--navy)', border: '2px solid var(--navy)', borderRadius: '6px', padding: '4px 10px', fontFamily: 'Fredoka One, cursive', fontSize: '0.7rem', cursor: 'pointer' }}>No</button>
+      </div>
+    ) : (
+      <button onClick={e => { e.stopPropagation(); setConfirmDelete(recordId); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', opacity: 0.5, padding: '4px' }} title="Delete">🗑️</button>
+    )
+  );
 
   return (
     <div className="screen" style={{ background: 'var(--cream)', minHeight: '100vh' }}>
@@ -177,6 +206,7 @@ useEffect(() => {
                         <span style={{ fontFamily: 'Abril Fatface, serif', color: i === 0 ? 'var(--red)' : 'var(--navy)', fontSize: '1.1rem' }}>{p.score}</span>
                       </div>
                     ))}
+                    <DeleteButton recordId={record.id} />
                   </div>
                 )}
               </div>
@@ -256,6 +286,7 @@ useEffect(() => {
                         <span style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--navy)' }}>{p.score}</span>
                       </div>
                     ))}
+                    <DeleteButton recordId={record.id} />
                   </div>
                 )}
               </div>
@@ -317,6 +348,7 @@ useEffect(() => {
                         <span style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--navy)' }}>{p.score}</span>
                       </div>
                     ))}
+                    <DeleteButton recordId={record.id} />
                   </div>
                 )}
               </div>

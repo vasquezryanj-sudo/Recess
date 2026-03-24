@@ -15,8 +15,11 @@ export default function ResultsPage() {
   const animFrame = useRef(null);
 
   const sortedPlayers = [...game.players].sort((a, b) => (game.scores[b.id] || 0) - (game.scores[a.id] || 0));
+  const topScore = sortedPlayers.length > 0 ? (game.scores[sortedPlayers[0].id] || 0) : 0;
+  const winners = sortedPlayers.filter(p => (game.scores[p.id] || 0) === topScore);
+  const isTie = winners.length > 1;
   const winner = sortedPlayers[0];
-  const losers = sortedPlayers.slice(1);
+  const losers = sortedPlayers.filter(p => !winners.includes(p));
 
   useEffect(() => {
     if (!winner) { router.push('/'); return; }
@@ -57,7 +60,6 @@ export default function ResultsPage() {
     animFrame.current = requestAnimationFrame(() => {
       setLoserBubbles(prev => prev.map((b, i) => {
         if (scattered) {
-          // Scatter outward from center
           const angle = (i / Math.max(losers.length, 1)) * Math.PI * 2;
           const scatterVx = b.scatterVx || Math.cos(angle) * 3;
           const scatterVy = b.scatterVy || Math.sin(angle) * 3;
@@ -69,7 +71,6 @@ export default function ResultsPage() {
             scatterVy: scatterVy * 0.85,
           };
         }
-        // Normal bouncing
         let { x, y, vx, vy } = b;
         x += vx; y += vy;
         if (x < 8) { x = 8; vx = Math.abs(vx); }
@@ -157,13 +158,31 @@ export default function ResultsPage() {
             <div key={i} style={{ position: 'absolute', left: `${(i * 23 + 5) % 100}%`, top: '-20px', width: `${5 + (i % 4)}px`, height: `${5 + (i % 4)}px`, borderRadius: i % 3 === 0 ? '50%' : '2px', background: ['var(--red)', 'var(--gold)', 'var(--green)', 'var(--orange)', 'var(--cream)'][i % 5], animation: `confettiFall ${1.5 + (i * 0.1)}s ease-in forwards`, animationDelay: `${i * 0.06}s`, pointerEvents: 'none' }} />
           ))}
 
-          <div style={{ width: '130px', height: '130px', borderRadius: '50%', background: winner.animal.color, border: '5px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.8rem', margin: '0 auto 16px', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
-            {winner.animal.emoji}
-          </div>
-
-          <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '5px', textTransform: 'uppercase', marginBottom: '4px' }}>★ Winner ★</div>
-          <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--cream)', fontSize: '2.4rem', marginBottom: '4px' }}>{winner.name}</div>
-          <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '1.6rem', marginBottom: '28px' }}>{game.scores[winner.id] || 0} pts</div>
+          {isTie ? (
+            <>
+              {/* Tie display */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                {winners.map(w => (
+                  <div key={w.id} style={{ width: '100px', height: '100px', borderRadius: '50%', background: w.animal.color, border: '5px solid var(--gold)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '2.8rem', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                    {w.animal.emoji}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '5px', textTransform: 'uppercase', marginBottom: '4px' }}>★ It&apos;s a tie! ★</div>
+              <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--cream)', fontSize: '1.8rem', marginBottom: '4px' }}>{winners.map(w => w.name).join(' & ')}</div>
+              <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '1.6rem', marginBottom: '28px' }}>{topScore} pts each</div>
+            </>
+          ) : (
+            <>
+              {/* Single winner */}
+              <div style={{ width: '130px', height: '130px', borderRadius: '50%', background: winner.animal.color, border: '5px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.8rem', margin: '0 auto 16px', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                {winner.animal.emoji}
+              </div>
+              <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '5px', textTransform: 'uppercase', marginBottom: '4px' }}>★ Winner ★</div>
+              <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--cream)', fontSize: '2.4rem', marginBottom: '4px' }}>{winner.name}</div>
+              <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '1.6rem', marginBottom: '28px' }}>{game.scores[winner.id] || 0} pts</div>
+            </>
+          )}
 
           {/* Score breakdown */}
           <div className="card-retro" style={{ background: 'rgba(245,237,214,0.08)', borderColor: 'rgba(212,168,67,0.3)', padding: '14px 18px', marginBottom: '24px', textAlign: 'left', minWidth: '230px' }}>
@@ -181,7 +200,7 @@ export default function ResultsPage() {
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             <button onClick={() => router.push('/records')} className="btn-retro btn-secondary" style={{ padding: '12px 18px', fontSize: '0.9rem' }}>Records 🏆</button>
-            <button onClick={() => { resetGame(); router.push('/new-game'); }} className="btn-retro btn-primary" style={{ padding: '12px 18px', fontSize: '0.9rem' }}>Play Again →</button>
+            <button onClick={() => router.push('/new-game')} className="btn-retro btn-primary" style={{ padding: '12px 18px', fontSize: '0.9rem' }}>Play {game.title || 'Again'} Again</button>
           </div>
           <button onClick={() => { resetGame(); router.push('/'); }} style={{ marginTop: '14px', background: 'none', border: 'none', color: 'var(--cream)', opacity: 0.35, fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', cursor: 'pointer', display: 'block', margin: '14px auto 0' }}>Home</button>
         </div>
