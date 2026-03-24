@@ -1,35 +1,57 @@
-const STORAGE_KEY = 'recess_records';
+// Storage layer — reads/writes to Neon via API
+// Falls back to localStorage if API is unavailable
 
-export function saveGame({ title, bggGame, players, scores }) {
-  const records = getRecords();
-  const sorted = [...players].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
-  
-  const record = {
-    id: `game-${Date.now()}`,
-    title,
-    bgg_id: bggGame?.id || null,
-    played_at: new Date().toISOString(),
-    players: sorted.map(p => ({
-      name: p.name,
-      animal_id: p.animal.id,
-      score: scores[p.id] || 0,
-    })),
-  };
+const LOCAL_KEY = 'recess_games_cache';
 
-  records.unshift(record);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  return record;
+function getCache() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; }
 }
 
-export function getRecords() {
+function setCache(games) {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(games)); } catch {}
+}
+
+export async function saveGame({ title, players, scores }) {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
+    const res = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, players, scores }),
+    });
+    if (!res.ok) throw new Error('API error');
+    const game = await res.json();
+    const cache = getCache();
+    setCache([game, ...cache]);
+    return game;
+  } catch (e) {
+    console.error('saveGame failed, using localStorage fallback', e);
+    const cache = getCache();
+    const sorted = [...players].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+    const record = {
+      id: Date.now().toString(),
+      title,
+      played_at: new Date().toISOString(),
+      players: sorted.map(p => ({ name: p.name, animal_id: p.animal?.id || p.animal_id, score: scores[p.id] || 0 })),
+      scores,
+    };
+    setCache([record, ...cache]);
+    return record;
   }
 }
 
-export function deleteRecord(id) {
-  const records = getRecords().filter(r => r.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+export async function getRecords() {
+  try {
+    const res = await fetch('/api/games');
+    if (!res.ok) throw new Error('API error');
+    const games = await res.json();
+    setCache(games);
+    return games;
+  } catch (e) {
+    console.error('getRecords failed, using localStorage cache', e);
+    return getCache();
+  }
+}
+
+export function getRecordsSync() {
+  return getCache();
 }
