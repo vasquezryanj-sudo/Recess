@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/lib/GameContext';
 import { saveGame } from '@/lib/storage';
+import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -107,12 +108,11 @@ export default function ResultsPage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '1.5rem',
           opacity: scattered ? 0.4 : 0.85,
           transition: 'opacity 0.5s',
           zIndex: 2,
         }}>
-          {b.animal.emoji}
+          <AvatarIcon id={b.animal.id} size={26} />
           <span style={{ fontSize: '0.45rem', color: 'white', fontFamily: 'Fredoka One, cursive', lineHeight: 1 }}>{b.name}</span>
           <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.7)', fontFamily: 'Fredoka One, cursive' }}>{game.scores[b.id] || 0}</span>
         </div>
@@ -134,12 +134,11 @@ export default function ResultsPage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '2rem',
           animation: 'cometIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards',
           zIndex: 5,
           boxShadow: '0 0 30px rgba(212,168,67,0.8), 0 -20px 40px rgba(212,168,67,0.4)',
         }}>
-          {winner.animal.emoji}
+          <AvatarIcon id={winner.animal.id} size={40} />
         </div>
       )}
 
@@ -163,8 +162,8 @@ export default function ResultsPage() {
               {/* Tie display */}
               <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {winners.map(w => (
-                  <div key={w.id} style={{ width: '100px', height: '100px', borderRadius: '50%', background: w.animal.color, border: '5px solid var(--gold)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '2.8rem', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
-                    {w.animal.emoji}
+                  <div key={w.id} style={{ width: '100px', height: '100px', borderRadius: '50%', background: w.animal.color, border: '5px solid var(--gold)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                    <AvatarIcon id={w.animal.id} size={50} />
                   </div>
                 ))}
               </div>
@@ -175,8 +174,8 @@ export default function ResultsPage() {
           ) : (
             <>
               {/* Single winner */}
-              <div style={{ width: '130px', height: '130px', borderRadius: '50%', background: winner.animal.color, border: '5px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.8rem', margin: '0 auto 16px', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
-                {winner.animal.emoji}
+              <div style={{ width: '130px', height: '130px', borderRadius: '50%', background: winner.animal.color, border: '5px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: '0 0 50px rgba(212,168,67,0.7)', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                <AvatarIcon id={winner.animal.id} size={68} />
               </div>
               <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--gold)', fontSize: '0.9rem', letterSpacing: '5px', textTransform: 'uppercase', marginBottom: '4px' }}>★ Winner ★</div>
               <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--cream)', fontSize: '2.4rem', marginBottom: '4px' }}>{winner.name}</div>
@@ -190,7 +189,7 @@ export default function ResultsPage() {
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: i < sortedPlayers.length - 1 ? '1px solid rgba(212,168,67,0.15)' : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ opacity: 0.5, fontFamily: 'Fredoka One, cursive', color: 'var(--gold)', fontSize: '0.75rem' }}>#{i + 1}</span>
-                  <span style={{ fontSize: '1rem' }}>{p.animal.emoji}</span>
+                  <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: p.animal.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><AvatarIcon id={p.animal.id} size={14} /></span>
                   <span style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--cream)', fontSize: '0.9rem' }}>{p.name}</span>
                 </div>
                 <span style={{ fontFamily: 'Abril Fatface, serif', color: i === 0 ? 'var(--gold)' : 'var(--cream)', fontSize: '1.05rem' }}>{game.scores[p.id] || 0}</span>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/lib/GameContext';
+import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function GameplayPage() {
   const router = useRouter();
@@ -206,7 +207,7 @@ export default function GameplayPage() {
       {showTimer && (
         <div style={{ background: timerUp ? 'var(--red)' : 'var(--navy)', borderBottom: '3px solid var(--navy)', padding: '14px 20px', textAlign: 'center', transition: 'background 0.3s' }}>
           {timerUp ? (
-            <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '1.6rem', color: 'white', animation: 'timerFlash 0.5s ease-in-out infinite' }}>TIME'S UP!</div>
+            <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '1.6rem', color: 'white', animation: 'timerFlash 0.5s ease-in-out infinite' }}>TIME&apos;S UP!</div>
           ) : (
             <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '2.2rem', color: 'var(--gold)', letterSpacing: '2px' }}>
               {String(timerMinutes).padStart(2, '0')}:{String(timerSeconds).padStart(2, '0')}
@@ -272,9 +273,8 @@ export default function GameplayPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: isLeading ? '1.6rem' : '1.4rem',
                 }}>
-                  {player.animal.emoji}
+                  <AvatarIcon id={player.animal.id} size={isLeading ? 28 : 24} />
                 </div>
                 {isFirst && (
                   <div style={{
@@ -333,7 +333,7 @@ export default function GameplayPage() {
           onClick={e => e.target === e.currentTarget && setShowInput(null)}>
           <div className="card-retro" style={{ width: '100%', maxWidth: '430px', padding: '24px 20px', borderRadius: '20px 20px 0 0', background: 'var(--cream)' }}>
             <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: '1rem', color: 'var(--navy)', marginBottom: '16px', letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.6 }}>
-              {showInput.sign > 0 ? '➕ Add' : '➖ Subtract'} points for {orderedPlayers.find(p => p.id === showInput.playerId)?.name}
+              {showInput.sign > 0 ? '+ Add' : '- Subtract'} points for {orderedPlayers.find(p => p.id === showInput.playerId)?.name}
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <div style={{ fontFamily: 'Abril Fatface, serif', fontSize: '2rem', color: showInput.sign > 0 ? 'var(--green)' : 'var(--red)', flexShrink: 0 }}>{showInput.sign > 0 ? '+' : '−'}</div>

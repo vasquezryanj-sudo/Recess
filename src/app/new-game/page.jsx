@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame, ANIMALS } from '@/lib/GameContext';
 import { getRecords } from '@/lib/storage';
+import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function NewGamePage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function NewGamePage() {
   const [holdingId, setHoldingId] = useState(null);
   const holdTimer = useRef(null);
 
-useEffect(() => {
+  useEffect(() => {
     getRecords().then(records => {
       const unique = [...new Set((records || []).map(r => r.title))].slice(0, 8);
       setPreviousGames(unique);
@@ -102,10 +103,10 @@ useEffect(() => {
                 width: '64px', height: '64px', borderRadius: '50%', background: b.animal.color,
                 border: `3px solid ${holdingId === b.id ? 'var(--red)' : 'var(--navy)'}`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.6rem', cursor: 'pointer', boxShadow: '2px 2px 0px var(--navy)', padding: 0,
+                cursor: 'pointer', boxShadow: '2px 2px 0px var(--navy)', padding: 0,
                 userSelect: 'none', transition: 'transform 0.2s, border-color 0.2s',
               }}>
-              {b.animal.emoji}
+              <AvatarIcon id={b.animal.id} size={28} />
               <span style={{ fontSize: '0.5rem', color: 'white', fontFamily: 'Fredoka One, cursive', lineHeight: 1, maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
             </div>
           ))}
@@ -130,7 +131,7 @@ useEffect(() => {
               {searchQuery.trim() && (
                 <button onClick={() => handleSelectGame(searchQuery.trim())}
                   style={{ width: '100%', padding: '10px 12px', background: 'var(--paper)', border: '2px dashed var(--navy)', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', fontFamily: 'Fredoka One, cursive', fontSize: '0.95rem', color: 'var(--navy)', marginBottom: '8px' }}>
-                  ➕ Add "{searchQuery.trim()}"
+                  + Add &ldquo;{searchQuery.trim()}&rdquo;
                 </button>
               )}
 
@@ -165,18 +166,19 @@ useEffect(() => {
             <input autoFocus type="text" value={playerName} onChange={e => setPlayerName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddPlayer()} placeholder="Player name..."
               style={{ width: '100%', padding: '10px 12px', border: '2px solid var(--navy)', borderRadius: '6px', fontFamily: 'Nunito, sans-serif', fontSize: '1rem', outline: 'none', background: 'var(--cream)', marginBottom: '12px' }} />
-            <div style={{ marginBottom: '8px', fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', color: 'var(--navy)', letterSpacing: '1px', textTransform: 'uppercase' }}>Choose your animal:</div>
+            <div style={{ marginBottom: '8px', fontFamily: 'Fredoka One, cursive', fontSize: '0.85rem', color: 'var(--navy)', letterSpacing: '1px', textTransform: 'uppercase' }}>Choose your icon:</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', marginBottom: '16px' }}>
               {ANIMALS.map(a => (
                 <button key={a.id} onClick={() => setSelectedAnimal(a)}
-                  style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: selectedAnimal.id === a.id ? a.color : 'var(--paper)', border: `3px solid ${selectedAnimal.id === a.id ? 'var(--navy)' : 'transparent'}`, fontSize: '1.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', boxShadow: selectedAnimal.id === a.id ? '2px 2px 0 var(--navy)' : 'none' }}>
-                  {a.emoji}
+                  style={{ width: '100%', aspectRatio: '1', borderRadius: '50%', background: selectedAnimal.id === a.id ? a.color : 'var(--paper)', border: `3px solid ${selectedAnimal.id === a.id ? 'var(--navy)' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', boxShadow: selectedAnimal.id === a.id ? '2px 2px 0 var(--navy)' : 'none', padding: '6px' }}>
+                  <AvatarIcon id={a.id} size={24} />
                 </button>
               ))}
             </div>
             <button onClick={handleAddPlayer} disabled={!playerName.trim()} className="btn-retro btn-green"
-              style={{ width: '100%', padding: '12px', fontSize: '1rem', opacity: playerName.trim() ? 1 : 0.4 }}>
-              Add {playerName.trim() ? playerName : 'Player'} {selectedAnimal.emoji}
+              style={{ width: '100%', padding: '12px', fontSize: '1rem', opacity: playerName.trim() ? 1 : 0.4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span>Add {playerName.trim() ? playerName : 'Player'}</span>
+              <span style={{ display: 'inline-flex', background: selectedAnimal.color, borderRadius: '50%', width: '24px', height: '24px', alignItems: 'center', justifyContent: 'center' }}><AvatarIcon id={selectedAnimal.id} size={16} /></span>
             </button>
           </div>
         )}

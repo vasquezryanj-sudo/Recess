@@ -4,18 +4,18 @@ import { createContext, useContext, useState } from 'react';
 const GameContext = createContext(null);
 
 export const ANIMALS = [
-  { id: 'fox', emoji: '🦊', label: 'Fox', color: '#E07A2F' },
-  { id: 'bear', emoji: '🐻', label: 'Bear', color: '#8B5E3C' },
-  { id: 'rabbit', emoji: '🐰', label: 'Rabbit', color: '#F4A7B9' },
-  { id: 'frog', emoji: '🐸', label: 'Frog', color: '#2D6A4F' },
-  { id: 'cat', emoji: '🐱', label: 'Cat', color: '#9B8EA8' },
-  { id: 'penguin', emoji: '🐧', label: 'Penguin', color: '#1B2A4A' },
-  { id: 'owl', emoji: '🦉', label: 'Owl', color: '#C8A96E' },
-  { id: 'duck', emoji: '🦆', label: 'Duck', color: '#D4A843' },
-  { id: 'wolf', emoji: '🐺', label: 'Wolf', color: '#7A8FA6' },
-  { id: 'raccoon', emoji: '🦝', label: 'Raccoon', color: '#6B7280' },
-  { id: 'lion', emoji: '🦁', label: 'Lion', color: '#D4A843' },
-  { id: 'elephant', emoji: '🐘', label: 'Elephant', color: '#9CA3AF' },
+  { id: 'robot', label: 'Robot', color: '#5B7FFF' },
+  { id: 'skull', label: 'Pirate', color: '#4A4A4A' },
+  { id: 'sun', label: 'Sun', color: '#F5A623' },
+  { id: 'cactus', label: 'Cactus', color: '#2D6A4F' },
+  { id: 'ghost', label: 'Ghost', color: '#9B8EA8' },
+  { id: 'shark', label: 'Shark', color: '#3A6B8C' },
+  { id: 'wizard', label: 'Wizard', color: '#7B3FA0' },
+  { id: 'bolt', label: 'Lightning', color: '#D4A843' },
+  { id: 'planet', label: 'Planet', color: '#C8303A' },
+  { id: 'mushroom', label: 'Mushroom', color: '#E07A2F' },
+  { id: 'flame', label: 'Flame', color: '#D4432F' },
+  { id: 'diamond', label: 'Diamond', color: '#4ECDC4' },
 ];
 
 export const ROTATING_PHRASES = [

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/lib/GameContext';
+import AvatarIcon from '@/lib/AvatarIcon';
 
 export default function DrawPage() {
   const router = useRouter();
@@ -92,16 +93,16 @@ export default function DrawPage() {
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${-offset % (reelItems.length * ITEM_HEIGHT)}px)` }}>
               {reelItems.map((p, i) => (
                 <div key={i} style={{
-                  height: `${ITEM_HEIGHT}px`, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 20px',
+                  height: `${ITEM_HEIGHT}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '0 20px',
                 }}>
                   <div style={{
                     width: '52px', height: '52px', borderRadius: '50%', background: p.animal.color,
                     border: '3px solid rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1.6rem', flexShrink: 0,
+                    flexShrink: 0,
                   }}>
-                    {p.animal.emoji}
+                    <AvatarIcon id={p.animal.id} size={28} />
                   </div>
-                  <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--cream)', fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--cream)', fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center', flex: 1 }}>
                     {p.name}
                   </div>
                 </div>
@@ -118,7 +119,9 @@ export default function DrawPage() {
       {/* Result */}
       {phase === 'result' && winner && (
         <div style={{ textAlign: 'center', opacity: winnerVisible ? 1 : 0, transform: winnerVisible ? 'scale(1)' : 'scale(0.4)', transition: 'all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-          <div style={{ fontSize: '5rem', marginBottom: '12px', filter: 'drop-shadow(0 0 24px rgba(212,168,67,0.9))' }}>{winner.animal.emoji}</div>
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: winner.animal.color, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', filter: 'drop-shadow(0 0 24px rgba(212,168,67,0.9))' }}>
+            <AvatarIcon id={winner.animal.id} size={64} />
+          </div>
           <div style={{ fontFamily: 'Abril Fatface, serif', color: 'var(--gold)', fontSize: '2.2rem' }}>{winner.name}</div>
           <div style={{ fontFamily: 'Fredoka One, cursive', color: 'var(--cream)', fontSize: '1rem', letterSpacing: '3px', marginBottom: '48px', opacity: 0.8, marginTop: '4px' }}>GOES FIRST!</div>
 
@@ -127,7 +130,7 @@ export default function DrawPage() {
           ))}
 
           <button onClick={() => router.push('/gameplay')} className="btn-retro btn-primary" style={{ padding: '16px 44px', fontSize: '1.2rem', letterSpacing: '1px' }}>
-            LET'S PLAY →
+            LET&apos;S PLAY →
           </button>
         </div>
       )}
